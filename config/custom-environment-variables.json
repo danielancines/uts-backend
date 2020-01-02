@@ -1,0 +1,8 @@
+{
+    "privateKey": "UTS_PRIVATE_KEY",
+    "connectionString": "CONNECTION_STRING",
+    "originUrl": "ORIGIN_URL",
+    "clientName": "CLIENT_NAME",
+    "emailAddress": "EMAIL_ADDRESS",
+    "emailPwd": "EMAIL_PWD"
+}
