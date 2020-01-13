@@ -1,5 +1,6 @@
 const { Video } = require('../schemas/video');
 const { User } = require('../schemas/user');
+const _ = require('lodash');
 const { ObjectId } = require('mongoose').Types;
 
 async function getById(id) {
@@ -14,81 +15,187 @@ async function getById(id) {
     }
 }
 
-async function getIn(ids) {
+async function getIn(ids, skip = 0, limit = 20, orderByField = 'date', orderBySortMode = 'asc') {
     try {
-        const videos = await Video.find({ _id: { $in: ids } })
-            .populate('category')
-            .populate('group')
-            .populate('instructor');    
-        return videos;
+        const options = [];
+        addSortToOptions(options, orderBySortMode, orderByField);
+        options.push({ $match: { _id: { $in: ids } } });
+        options.push({ $skip: skip });
+        options.push({ $limit: limit });
+
+        return {
+            videos: await getVideos(options),
+            totalDocuments: await Video.find({ _id: { $in: ids } }).countDocuments()
+        };
     } catch (error) {
         throw error;
     }
 }
 
-async function getNotIn(ids) {
+async function getNotIn(ids, skip = 0, limit = 20, orderByField = 'date', orderBySortMode = 'asc') {
     try {
-        const videos = await Video.find({ _id: { $nin: ids } })
-            .populate('category')
-            .populate('group')
-            .populate('instructor');
-        return videos;
+        const options = [];
+        addSortToOptions(options, orderBySortMode, orderByField);
+        options.push({ $match: { _id: { $nin: ids } } });
+        options.push({ $skip: skip });
+        options.push({ $limit: limit });
+
+        return {
+            videos: await getVideos(options),
+            totalDocuments: await Video.find({ _id: { $nin: ids } }).countDocuments()
+        };
+        
     } catch (error) {
         throw error;
     }
 }
 
-async function get() {
+async function get(skip = 0, limit = 20, orderByField = 'date', orderBySortMode = 'asc') {
     try {
-        const videos = await Video.find()
-            .populate('category')
-            .populate('group')
-            .populate('instructor');
-        return videos;
+        const options = [];
+
+        addSortToOptions(options, orderBySortMode, orderByField);
+        options.push({ $skip: skip });
+        options.push({ $limit: limit });
+
+        return {
+            videos: await getVideos(options),
+            totalDocuments: await Video.countDocuments()
+        };
+
     } catch (error) {
         throw error;
     }
 }
 
-async function getByCategoryId(id) {
+async function getVideos(options) {
     try {
-        const videos = await Video.find({ 'category': ObjectId(id) })
-            .populate('category')
-            .populate('group')
-            .populate('instructor');
-        return videos;
+        options.push(
+            {
+                $project: {
+                    _id: 1,
+                    name: 1,
+                    group: 1,
+                    category: 1,
+                    instructor: 1,
+                    date: 1
+                }
+            },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'instructor',
+                    foreignField: '_id',
+                    as: 'instructor'
+                }
+            },
+            {
+                $lookup: {
+                    from: 'groups',
+                    localField: 'group',
+                    foreignField: '_id',
+                    as: 'group'
+                }
+            },
+            {
+                $lookup: {
+                    from: 'categories',
+                    localField: 'category',
+                    foreignField: '_id',
+                    as: 'category'
+                }
+            },
+            { $unwind: { path: "$instructor", preserveNullAndEmptyArrays: true } },
+            { $unwind: "$group" },
+            { $unwind: "$category" },
+            {
+                $project: {
+                    name: '$name',
+                    group: '$group',
+                    category: '$category',
+                    date: '$date',
+                    instructor: {
+                        _id: '$instructor._id',
+                        name: '$instructor.name',
+                        roles: '$instructor.roles',
+                        groups: '$instructor.groups',
+                        pokerRooms: '$instructor.pokerRooms'
+                    }
+                }
+            });
+        return await Video.aggregate(options);
     } catch (error) {
         throw error;
     }
 }
 
-async function getByGroupId(id) {
+async function getByCategoryId(categoryId, skip = 0, limit = 20, orderByField = 'date', orderBySortMode = 'asc') {
     try {
-        const videos = await Video.find({ 'group': ObjectId(id) })
-            .populate('category')
-            .populate('group')
-            .populate('instructor');
-        return videos;
+        const options = [];
+        addSortToOptions(options, orderBySortMode, orderByField);
+        options.push({ $match: { category: ObjectId(categoryId) } });
+        options.push({ $skip: skip });
+        options.push({ $limit: limit });
+
+        return {
+            videos: await getVideos(options),
+            totalDocuments: await Video.find({ category: ObjectId(categoryId) }).countDocuments()
+        };
     } catch (error) {
         throw error;
     }
 }
 
-async function searchByTerm(term) {
+async function getByGroupId(groupId, skip = 0, limit = 20, orderByField = 'date', orderBySortMode = 'asc') {
+    try {
+        const options = [];
+        addSortToOptions(options, orderBySortMode, orderByField);
+        options.push({ $match: { group: ObjectId(groupId) } });
+        options.push({ $skip: skip });
+        options.push({ $limit: limit });
+
+        return {
+            videos: await getVideos(options),
+            totalDocuments: await Video.find({ group: ObjectId(groupId) }).countDocuments()
+        };
+    } catch (error) {
+        throw error;
+    }
+}
+
+async function searchByTerm(term, skip = 0, limit = 20, orderByField = 'date', orderBySortMode = 'asc') {
     try {
         const users = await User.find({ $or: [{ 'name': { $regex: term, $options: 'i' } }, { 'lastName': { $regex: term, $options: 'i' } }] }, { _id: 1 });
-        const videos = await Video.find({
-            $or:
-                [
+        let usersIds = [];
+        users.forEach(user => {
+            usersIds.push(ObjectId(user._id));
+        });
+
+        const options = [];
+        options.push({
+            $match: {
+                $or:
+                    [
+                        { 'instructor': { $in: usersIds } },
+                        { 'name': { $regex: term, $options: 'i' } },
+                        { 'description': { $regex: term, $options: 'i' } }
+                    ]
+            }
+        });
+        addSortToOptions(options, orderBySortMode, orderByField);
+        options.push({ $skip: skip });
+        options.push({ $limit: limit });
+
+        return {
+            videos: await getVideos(options),
+            totalDocuments: await Video.find({
+                $or: [
                     { 'instructor': { $in: users } },
                     { 'name': { $regex: term, $options: 'i' } },
                     { 'description': { $regex: term, $options: 'i' } }
                 ]
-        }).populate('category')
-            .populate('group')
-            .populate('instructor');
-
-        return videos;
+            }).countDocuments()
+        };
     } catch (error) {
         throw error;
     }
@@ -143,6 +250,31 @@ async function deleteById(id) {
         return await Video.findByIdAndRemove(id);
     } catch (error) {
         throw error;
+    }
+}
+
+function addSortToOptions(options, orderBy, orderByField) {
+    if (!orderBy || !orderByField) return;
+
+    let orderByIndex = 1;
+    switch (orderBy) {
+        case 'asc':
+            orderByIndex = 1;
+            break;
+        case 'desc':
+            orderByIndex = -1;
+            break;
+        default:
+            break;
+    }
+
+    switch (orderByField) {
+        case 'name':
+            options.push({ $sort: { name: orderByIndex } });
+            break;
+        case 'date':
+            options.push({ $sort: { date: orderByIndex } });
+            break;
     }
 }
 
