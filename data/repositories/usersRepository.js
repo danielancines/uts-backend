@@ -1,4 +1,5 @@
 const { User } = require('../schemas/user');
+const { Video } = require('../schemas/video');
 const videosRepository = require('./videosRepository');
 const bcrypt = require('bcryptjs');
 const _ = require('lodash');
@@ -155,79 +156,120 @@ async function getGroups(id) {
     }
 }
 
-async function getVideos(id) {
+async function getVideos(id, skip = 0, limit = 20, orderByField, orderBySortMode) {
     try {
         const user = await User.findById(id, { groups: 1 });
-        const videos = await videosRepository.get();
+        const response = await videosRepository.get(skip, limit, orderByField, orderBySortMode);
 
-        return getVideosPerGroup(videos, user.groups);
+        return {
+            videos: getVideosPerGroup(response.videos, user.groups),
+            totalDocuments: response.totalDocuments
+        };
     } catch (error) {
         throw error;
     }
 }
 
-async function getVideosByCategoryId(id, categoryId) {
+async function getVideosSummarized(id) {
     try {
         const user = await User.findById(id, { groups: 1 });
-        const videos = await videosRepository.getByCategoryId(categoryId);
+        const videos = await Video.aggregate(
+            [
+                {
+                    $project: {
+                        _id: 1,
+                        group: 1
+                    }
+                }
+            ]
+        )
 
-        return getVideosPerGroup(videos, user.groups);
+        return {
+            videos: getVideosPerGroup(videos, user.groups),
+            totalDocuments: videos.length
+        };
     } catch (error) {
         throw error;
     }
 }
 
-async function getVideosByGroupId(id, groupId) {
+async function getVideosByCategoryId(id, categoryId, skip = 0, limit = 20, orderByField, orderBySortMode) {
     try {
         const user = await User.findById(id, { groups: 1 });
-        const videos = await videosRepository.getByGroupId(groupId);
+        const response = await videosRepository.getByCategoryId(categoryId, skip, limit, orderByField, orderBySortMode);
 
-        return getVideosPerGroup(videos, user.groups);
+        return {
+            videos: getVideosPerGroup(response.videos, user.groups),
+            totalDocuments: response.totalDocuments
+        };
     } catch (error) {
         throw error;
     }
 }
 
-async function getVideosByTerm(id, term) {
+async function getVideosByGroupId(id, groupId, skip = 0, limit = 20, orderByField, orderBySortMode) {
     try {
         const user = await User.findById(id, { groups: 1 });
-        const videos = await videosRepository.searchByTerm(term);
+        const response = await videosRepository.getByGroupId(groupId, skip, limit, orderByField, orderBySortMode);
 
-        return getVideosPerGroup(videos, user.groups);
+        return {
+            videos: getVideosPerGroup(response.videos, user.groups),
+            totalDocuments: response.totalDocuments
+        };
     } catch (error) {
         throw error;
     }
 }
 
-async function getVideosByWatchedStatus(id, watched) {
+async function getVideosByTerm(id, term, skip = 0, limit = 20, orderByField, orderBySortMode) {
+    try {
+        const user = await User.findById(id, { groups: 1 });
+        const response = await videosRepository.searchByTerm(term, skip, limit, orderByField, orderBySortMode);
+
+        return {
+            videos: getVideosPerGroup(response.videos, user.groups),
+            totalDocuments: response.totalDocuments
+        };
+    } catch (error) {
+        throw error;
+    }
+}
+
+async function getVideosByWatchedStatus(id, watched, skip = 0, limit = 20, orderByField, orderBySortMode) {
     try {
         const user = await User.findById(id, { groups: 1, videosStatus: 1 });
-        let videos;
+        let response;
 
         if (_.isEqual(watched, 'true')) {
-            videos = await videosRepository.getIn(_.map(user.videosStatus, '_id'));
+            response = await videosRepository.getIn(_.map(user.videosStatus, '_id'), skip, limit, orderByField, orderBySortMode);
         } else {
-            videos = await videosRepository.getNotIn(_.map(user.videosStatus, '_id'));
+            response = await videosRepository.getNotIn(_.map(user.videosStatus, '_id'), skip, limit, orderByField, orderBySortMode);
         }
 
-        return getVideosPerGroup(videos, user.groups);
+        return {
+            videos: getVideosPerGroup(response.videos, user.groups),
+            totalDocuments: response.totalDocuments
+        };
     } catch (error) {
         throw error;
     }
 }
 
-async function getFavoritedVideos(id, favorites) {
-try {
-    const user = await User.findById(id, { groups: 1, favoritedVideos: 1 });
-    let videos;
-    
+async function getFavoritedVideos(id, favorites, skip = 0, limit = 20, orderByField, orderBySortMode) {
+    try {
+        const user = await User.findById(id, { groups: 1, favoritedVideos: 1 });
+        let response;
+
         if (_.isEqual(favorites, 'true')) {
-            videos = await videosRepository.getIn(user.favoritedVideos);
+            response = await videosRepository.getIn(user.favoritedVideos, skip, limit, orderByField, orderBySortMode);
         } else {
-            videos = await videosRepository.getNotIn(user.favoritedVideos);
+            response = await videosRepository.getNotIn(user.favoritedVideos, skip, limit, orderByField, orderBySortMode);
         }
 
-        return getVideosPerGroup(videos, user.groups);
+        return {
+            videos: getVideosPerGroup(response.videos, user.groups),
+            totalDocuments: response.totalDocuments
+        };
     } catch (error) {
         throw error;
     }
@@ -309,5 +351,6 @@ module.exports = {
     getActiveUsersEmail,
     getVideosByWatchedStatus,
     updateUsersPokerRoomsData,
-    getFavoritedVideos
+    getFavoritedVideos,
+    getVideosSummarized
 };

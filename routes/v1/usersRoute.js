@@ -133,7 +133,7 @@ router.get('/:id/moneyrequests', async (req, res) => {
             moneyRequests = await MoneyRequest.find({ user: req.params.id }).populate('pokerRoom').sort('-date');
         }
 
-        const documentsCount = await MoneyRequest.find({ user: req.params.id }).count();
+        const documentsCount = await MoneyRequest.find({ user: req.params.id }).countDocuments();
         res.status(200).send({
             code: 1,
             count: documentsCount,
@@ -199,43 +199,48 @@ router.post('/:id/videostatus/:videoId', async (req, res) => {
 
 router.get('/:id/videos', async (req, res) => {
     try {
+        let response;
         let videos = [];
 
-        if (req.query.category && req.query.category.id)
-            videos = await usersRepository.getVideosByCategoryId(req.params.id, req.query.category.id);
-        else if (req.query.group && req.query.group.id)
-            videos = await usersRepository.getVideosByGroupId(req.params.id, req.query.group.id);
-        else if (req.query.term)
-            videos = await usersRepository.getVideosByTerm(req.params.id, req.query.term);
-        else if (req.query.watched)
-            videos = await usersRepository.getVideosByWatchedStatus(req.params.id, req.query.watched);
-        else if (req.query.favorites)
-            videos = await usersRepository.getFavoritedVideos(req.params.id, req.query.favorites);
-        else
-            videos = await usersRepository.getVideos(req.params.id);
+        const skip = _.isUndefined(req.query.skip) ? 0 : parseInt(req.query.skip, 10);
+        const limit = _.isUndefined(req.query.limit) ? 20 : parseInt(req.query.limit, 10);
 
+        let orderByField, orderBySortMode;
+        if (req.query.orderBy) {
+            const orderByOptions = req.query.orderBy.split(' ');
+            orderByField = orderByOptions[0];
+            orderBySortMode = orderByOptions[1];
+        }
+
+        if (req.query.category && req.query.category.id)
+            response = await usersRepository.getVideosByCategoryId(req.params.id, req.query.category.id, skip, limit, orderByField, orderBySortMode);
+        else if (req.query.group && req.query.group.id)
+            response = await usersRepository.getVideosByGroupId(req.params.id, req.query.group.id, skip, limit, orderByField, orderBySortMode);
+        else if (req.query.term)
+            response = await usersRepository.getVideosByTerm(req.params.id, req.query.term, skip, limit, orderByField, orderBySortMode);
+        else if (req.query.watched)
+            response = await usersRepository.getVideosByWatchedStatus(req.params.id, req.query.watched, skip, limit, orderByField, orderBySortMode);
+        else if (req.query.favorites)
+            response = await usersRepository.getFavoritedVideos(req.params.id, req.query.favorites, skip, limit, orderByField, orderBySortMode);
+        else if (req.query.summarized)
+            response = await usersRepository.getVideosSummarized(req.params.id);
+        else
+            response = await usersRepository.getVideos(req.params.id, skip, limit, orderByField, orderBySortMode);
+
+        videos = response.videos;
         if (req.query.userCanWatch) {
             videos = _.filter(videos, v => v.canWatch);
         }
 
-        if (req.query.orderBy) {
-            if (!(req.query.orderBy instanceof Array)) {
-                videos = _.orderBy(videos, `video.${req.query.orderBy}`, _.isEqual(req.query.orderBy, 'name') ? 'asc' : 'desc');
-            }
-        }
-
         const user = await User.findById(req.params.id, { watchedVideos: 1, videosStatus: 1, _id: 0 });
         _.forEach(videos, v => {
-            const watchedVideo = _.find(user.watchedVideos, function (i) {
-                return i.equals(v.video._id);
-            });
-
             v.videoStatus = _.find(user.videosStatus, { '_id': v.video._id });
         });
 
         res.status(200).send({
             code: 1,
             count: videos.length,
+            totalCount: response.totalDocuments,
             totalWatchedVideos: user.videosStatus.length,
             data: videos
         });

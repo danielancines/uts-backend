@@ -3,7 +3,7 @@ const logger = require('../log/logger');
 const config = require('config');
 
 function connect() {
-    mongoose.connect(config.get('connectionString'), { useNewUrlParser: true })
+    mongoose.connect(config.get('connectionString'), { useNewUrlParser: true, useUnifiedTopology: true })
         .then(() => logger.database.info('Connected'))
         .catch(err => logger.database.error(`Could not connect: ${err.message}`));
 }
