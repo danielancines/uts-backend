@@ -16,7 +16,7 @@ const dailyBalancesSchema = new mongoose.Schema({
 
 function validate(dailyBalance) {
     const joiSchema = Joi.object().keys({
-        user: Joi.string().required(),
+        user: Joi.object().required(),
         date: Joi.date().required(),
         firstRegistration: Joi.string().required(),
         lastRegistration: Joi.string().required(),
