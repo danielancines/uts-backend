@@ -7,6 +7,7 @@ const config = require('config');
 const queryBuilder = require('../../data/util/queryBuilder');
 const tokenMW = require('./../../middleware/token');
 const _ = require('lodash');
+const { isAllNumbers } = require('../../data/util/validators');
 
 router.use(tokenMW);
 router.get('/', async (req, res) => {
@@ -68,6 +69,47 @@ router.post('/', [rolesValidation(dailyBalanceRoles.insert)], async (req, res) =
             code: 2,
             message: 'Error at creation',
             error: error.message
+        });
+    }
+});
+
+router.put('/:id', [rolesValidation(dailyBalanceRoles.update)], async (req, res) => {
+    const dailyBalance = req.body;
+    const dailyBalanceId = req.params.id;
+    if (!dailyBalanceId) {
+        return res.status(404).send({
+            id: 2,
+            message: 'DailyBalanceId not provided'
+        });
+    }
+
+    try {
+        if (!isAllNumbers(dailyBalance.balances)) {
+            return res.status(405).send({
+                code: 207,
+                message: 'All balances must have a 0.00 anotation'
+            });
+        }
+
+        const result = await DailyBalance.findByIdAndUpdate(dailyBalanceId, {
+            $set: {
+                date: dailyBalance.date,
+                firstRegistration: dailyBalance.firstRegistration,
+                lastRegistration: dailyBalance.lastRegistration,
+                gamesCount: dailyBalance.gamesCount,
+                balances: dailyBalance.balances
+            }
+        }).populate('user');
+
+        res.status(200).send({
+            code: 1,
+            message: 'Updated finished',
+            savedDailyBalance: result
+        });
+    } catch (error) {
+        res.status(500).send({
+            code: 2,
+            message: error.message
         });
     }
 });

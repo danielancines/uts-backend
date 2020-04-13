@@ -4,8 +4,8 @@ const Joi = require('joi');
 const dailyBalancesSchema = new mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     date: { type: Date },
-    firstRegistration: { type: String },
-    lastRegistration: { type: String },
+    firstRegistration: { type: Date },
+    lastRegistration: { type: Date },
     gamesCount: { type: Number },
     balances: [
         {
@@ -18,8 +18,8 @@ function validate(dailyBalance) {
     const joiSchema = Joi.object().keys({
         user: Joi.object().required(),
         date: Joi.date().required(),
-        firstRegistration: Joi.string().required(),
-        lastRegistration: Joi.string().required(),
+        firstRegistration: Joi.date().required(),
+        lastRegistration: Joi.date().required(),
         gamesCount: Joi.number().required(),
         balances: Joi.array().optional()
     });
