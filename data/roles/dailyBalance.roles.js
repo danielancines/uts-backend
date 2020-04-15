@@ -1,6 +1,6 @@
 module.exports = {
-    insert: 'insertDailyBalance',
+    insert: 'insertDailyBalances',
     access: 'accessDailyBalances',
-    update: 'updateDailyBalance',
-    delete: 'deleteDailyBalance'
+    update: 'updateDailyBalances',
+    delete: 'deleteDailyBalances'
 };
