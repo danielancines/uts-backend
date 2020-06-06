@@ -7,6 +7,7 @@ const userRoles = require('../../data/roles/user.roles');
 const { User } = require('../../data/schemas/user');
 const { Video } = require('../../data/schemas/video');
 const { userMessageValidate, UserMessage } = require('../../data/schemas/userMessage');
+const { DailyBalance } = require('./../../data/schemas/dailyBalances');
 const { MoneyRequest } = require('../../data/schemas/moneyRequest');
 const queryBuilder = require('../../data/util/queryBuilder');
 const Joi = require('joi');
@@ -333,6 +334,52 @@ router.get('/:id/messages', async (req, res) => {
         res.status(500).send({
             code: 2,
             message: 'Error getting Messages',
+            error: error.message
+        });
+    }
+});
+
+router.get('/:id/balances', async (req, res) => {
+    try {
+        const lastBalance = await DailyBalance.aggregate([
+            { $match: { 'user': ObjectId(req.params.id) } },
+            { $sort: { 'date': -1 } },
+            { $limit: 1 },
+            { $unwind: '$balances' },
+            {
+                $project: {
+                    _id: 0,
+                    balances: 1
+                }
+            },
+            {
+                $lookup: {
+                    from: 'pokerrooms',
+                    localField: 'balances.pokerRoomId',
+                    foreignField: '_id',
+                    as: 'pokerRoom'
+                }
+            },
+            { $unwind: '$pokerRoom' },
+            {
+                $project: {
+                    name: '$pokerRoom.name',
+                    currency: '$pokerRoom.currency',
+                    balance: '$balances.value'
+                }
+            }
+        ]);
+
+        res.status(200).send({
+            code: 1,
+            count: 1,
+            data: lastBalance
+        });
+    }
+    catch (error) {
+        res.status(500).send({
+            code: 2,
+            message: 'Error getting Balances',
             error: error.message
         });
     }

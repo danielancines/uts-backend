@@ -14,6 +14,7 @@ const systemRoute = require('./systemRoute');
 const userLogsRoute = require('./userLogsRoute');
 const pokerRoomRoute = require('./pokerRoomsRoute');
 const moneyRequestsRoute = require('./moneyRequestsRoute');
+const dailyBalanceRoute = require('./dailyBalanceRoute');
 
 //Enable pre-flight 
 router.options('*', cors());
@@ -30,6 +31,7 @@ router.use('/system', systemRoute);
 router.use('/userLogs', userLogsRoute);
 router.use('/pokerRooms', pokerRoomRoute);
 router.use('/moneyrequests', moneyRequestsRoute);
+router.use('/dailyBalances', dailyBalanceRoute);
 
 router.get('/', (req, res) => {
     res.status(200).json({
@@ -41,9 +43,10 @@ router.get('/', (req, res) => {
             { code: 100, type: 'Success', description: 'Transaction OK' },
             { code: 200, type: 'Error', description: 'Error has occurred' },
             { code: 201, type: 'Error', description: 'Not Found' },
-            { code: 202, type: 'Error', description: 'Relationships' }
+            { code: 202, type: 'Error', description: 'Relationships' },
+            { code: 207, type: 'Error', description: 'Bad Number Format' }
         ]
     });
 });
 
-module.exports = router;
+module.exports = router; 
