@@ -96,10 +96,10 @@ router.put('/:id', [rolesValidation(moneyRequestRoles.update)], async (req, res)
         let message;
         switch (parseInt(moneyRequest.status)) {
             case 1:
-                message = `Pedido de aporte solicitado no dia: ${result.date.getDate()}/${result.date.getMonth()}/${result.date.getFullYear()}, para a sala ${result.pokerRoom.name} foi recusado.`;
+                message = `Pedido de aporte solicitado no dia: ${result.date.getDate()}/${result.date.getMonth()+1}/${result.date.getFullYear()}, para a sala ${result.pokerRoom.name} foi recusado.`;
                 break;
             case 2:
-                message = `Pedido de aporte solicitado no dia: ${result.date.getDate()}/${result.date.getMonth()}/${result.date.getFullYear()}, para a sala ${result.pokerRoom.name} foi aprovado.`;
+                message = `Pedido de aporte solicitado no dia: ${result.date.getDate()}/${result.date.getMonth()+1}/${result.date.getFullYear()}, para a sala ${result.pokerRoom.name} foi aprovado.`;
                 break;
         }
 
