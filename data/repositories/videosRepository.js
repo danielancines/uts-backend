@@ -78,6 +78,7 @@ async function getVideos(options) {
                     group: 1,
                     category: 1,
                     instructor: 1,
+                    duration: 1,
                     date: 1
                 }
             },
@@ -114,6 +115,7 @@ async function getVideos(options) {
                     group: '$group',
                     category: '$category',
                     date: '$date',
+                    duration: '$duration',
                     instructor: {
                         _id: '$instructor._id',
                         name: '$instructor.name',
